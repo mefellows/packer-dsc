@@ -1,0 +1,24 @@
+language: go
+go:
+- 1.2
+- 1.3
+- tip
+install:
+- make updatedeps
+before_install:
+- go get github.com/axw/gocov/gocov
+- go get github.com/mattn/goveralls
+- go get golang.org/x/tools/cmd/cover
+- go get code.google.com/p/go.tools/cmd/cover
+- go get github.com/modocache/gover
+script:
+- go build
+- make test
+- $HOME/gopath/bin/goveralls -service="travis-ci" -coverprofile=profile.cov -repotoken
+  $COVERALLS_TOKEN
+matrix:
+  allow_failures:
+  - go: tip
+env:
+  global:
+    secure: WXoA6Ei4wVCuWqgOv0nOEaImewC1hFWnJGJVEgWMx33WkmZd9zzniPGjUqAeYEAKnRKeCFnVARNJftPWF7e21Z2fitkoDyQdPN7LmyY1DFU92+KV/XeV4Dq1i+2eJ6OtmQV5FFXr2clgZ59TenMQ87eDIoePkPDGt7hPlnFh9iM=
