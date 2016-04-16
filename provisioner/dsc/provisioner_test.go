@@ -1,15 +1,27 @@
 package dsc
 
 import (
-	"github.com/mitchellh/packer/packer"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/mitchellh/packer/packer"
 )
 
 func testConfig() map[string]interface{} {
+	filename := "/tmp/packer-dsc-pull-manifest"
+	if _, err := os.Stat(filename); err != nil {
+		tf, err := ioutil.TempFile("", "packer")
+		os.Rename(tf.Name(), "/tmp/packer-dsc-pull-manifest")
+
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	return map[string]interface{}{
-		"inline": []interface{}{"foo", "bar"},
+		"manifest_file": filename,
 	}
 }
 
@@ -21,88 +33,39 @@ func TestProvisioner_Impl(t *testing.T) {
 	}
 }
 
-func TestProvisionerPrepare_Defaults(t *testing.T) {
-	var p Provisioner
+func TestProvisionerPrepare_configurationFileDataPath(t *testing.T) {
 	config := testConfig()
 
+	delete(config, "configuration_file_path")
+	p := new(Provisioner)
 	err := p.Prepare(config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
-	if p.config.RemotePath != DefaultRemotePath {
-		t.Errorf("unexpected remote path: %s", p.config.RemotePath)
-	}
-
-	if p.config.Password != "vagrant" {
-		t.Error("Password should default to 'vagrant'")
-	}
-
-	if p.config.Username != "vagrant" {
-		t.Error("Username should default to 'vagrant'")
-	}
-
-	if p.config.Hostname != "localhost" {
-		t.Error("Hostname should default to 'localhost'")
-	}
-
-	if p.config.Port != 5985 {
-		t.Error("Port should default to '5985'")
-	}
-}
-
-func TestProvisionerPrepare_Config(t *testing.T) {
-
-}
-
-func TestProvisionerPrepare_InlineShebang(t *testing.T) {
-	config := testConfig()
-
-	delete(config, "inline_shebang")
-	p := new(Provisioner)
-	err := p.Prepare(config)
-	if err != nil {
-		t.Fatalf("should not have error: %s", err)
-	}
-
-	if p.config.InlineShebang != "cmd /c powershell -Command" {
-		t.Fatalf("bad value: %s", p.config.InlineShebang)
-	}
-
 	// Test with a good one
-	config["inline_shebang"] = "foo"
+	tf, err := ioutil.TempFile("", "packer")
+	if err != nil {
+		t.Fatalf("error tempfile: %s", err)
+	}
+	defer os.Remove(tf.Name())
+
+	config["configuration_file_path"] = tf.Name()
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not have error: %s", err)
-	}
-
-	if p.config.InlineShebang != "foo" {
-		t.Fatalf("bad value: %s", p.config.InlineShebang)
+		t.Fatalf("err: %s", err)
 	}
 }
 
-func TestProvisionerPrepare_InvalidKey(t *testing.T) {
-	var p Provisioner
+func TestProvisionerPrepare_manifestFile(t *testing.T) {
 	config := testConfig()
 
-	// Add a random key
-	config["i_should_not_be_valid"] = true
-	err := p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
-	}
-}
-
-func TestProvisionerPrepare_Script(t *testing.T) {
-	config := testConfig()
-	delete(config, "inline")
-
-	config["script"] = "/this/should/not/exist"
+	delete(config, "manifest_file")
 	p := new(Provisioner)
 	err := p.Prepare(config)
 	if err == nil {
-		t.Fatal("should have error")
+		t.Fatal("should be an error")
 	}
 
 	// Test with a good one
@@ -112,146 +75,293 @@ func TestProvisionerPrepare_Script(t *testing.T) {
 	}
 	defer os.Remove(tf.Name())
 
-	config["script"] = tf.Name()
+	config["manifest_file"] = tf.Name()
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not have error: %s", err)
+		t.Fatalf("err: %s", err)
 	}
 }
 
-func TestProvisionerPrepare_ScriptAndInline(t *testing.T) {
-	var p Provisioner
+func TestProvisionerPrepare_manifestDir(t *testing.T) {
 	config := testConfig()
 
-	delete(config, "inline")
-	delete(config, "script")
-	err := p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
-	}
-
-	// Test with both
-	tf, err := ioutil.TempFile("", "packer")
-	if err != nil {
-		t.Fatalf("error tempfile: %s", err)
-	}
-	defer os.Remove(tf.Name())
-
-	config["inline"] = []interface{}{"foo"}
-	config["script"] = tf.Name()
-	err = p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
-	}
-}
-
-func TestProvisionerPrepare_ScriptAndScripts(t *testing.T) {
-	var p Provisioner
-	config := testConfig()
-
-	// Test with both
-	tf, err := ioutil.TempFile("", "packer")
-	if err != nil {
-		t.Fatalf("error tempfile: %s", err)
-	}
-	defer os.Remove(tf.Name())
-
-	config["inline"] = []interface{}{"foo"}
-	config["scripts"] = []string{tf.Name()}
-	err = p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
-	}
-}
-
-func TestProvisionerPrepare_Scripts(t *testing.T) {
-	config := testConfig()
-	delete(config, "inline")
-
-	config["scripts"] = []string{}
+	delete(config, "manifestdir")
 	p := new(Provisioner)
 	err := p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
+	if err != nil {
+		t.Fatalf("err: %s", err)
 	}
 
 	// Test with a good one
-	tf, err := ioutil.TempFile("", "packer")
+	td, err := ioutil.TempDir("", "packer")
 	if err != nil {
-		t.Fatalf("error tempfile: %s", err)
+		t.Fatalf("error: %s", err)
 	}
-	defer os.Remove(tf.Name())
+	defer os.RemoveAll(td)
 
-	config["scripts"] = []string{tf.Name()}
+	config["manifest_dir"] = td
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not have error: %s", err)
+		t.Fatalf("err: %s", err)
 	}
 }
 
-func TestProvisionerPrepare_EnvironmentVars(t *testing.T) {
+func TestProvisionerPrepare_modulePaths(t *testing.T) {
 	config := testConfig()
 
-	// Test with a bad case
-	config["environment_vars"] = []string{"badvar", "good=var"}
+	delete(config, "module_paths")
 	p := new(Provisioner)
 	err := p.Prepare(config)
-	if err == nil {
-		t.Fatal("should have error")
+	if err != nil {
+		t.Fatalf("err: %s", err)
 	}
 
-	// Test with a trickier case
-	config["environment_vars"] = []string{"=bad"}
+	// Test with bad paths
+	config["module_paths"] = []string{"i-should-not-exist"}
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err == nil {
-		t.Fatal("should have error")
+		t.Fatal("should be an error")
 	}
 
-	// Test with a good case
-	// Note: baz= is a real env variable, just empty
-	config["environment_vars"] = []string{"FOO=bar", "baz="}
+	// Test with a good one
+	td, err := ioutil.TempDir("", "packer")
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+	defer os.RemoveAll(td)
+
+	config["module_paths"] = []string{td}
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
-		t.Fatalf("should not have error: %s", err)
+		t.Fatalf("err: %s", err)
 	}
 }
 
-func TestProvisionerQuote_EnvironmentVars(t *testing.T) {
+func TestProvisionerPrepare_configurationParams(t *testing.T) {
 	config := testConfig()
 
-	config["environment_vars"] = []string{"keyone=valueone", "keytwo=value\ntwo", "keythree='valuethree'", "keyfour='value\nfour'"}
+	delete(config, "configuration_params")
 	p := new(Provisioner)
-	p.Prepare(config)
-
-	expectedValue := "keyone=valueone"
-	if p.config.Vars[0] != expectedValue {
-		t.Fatalf("%s should be equal to %s", p.config.Vars[0], expectedValue)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
 	}
 
-	expectedValue = "keytwo=value\ntwo"
-	if p.config.Vars[1] != expectedValue {
-		t.Fatalf("%s should be equal to %s", p.config.Vars[1], expectedValue)
+	// Test with malformed fact
+	config["configuration_params"] = "fact=stringified"
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatal("should be an error")
 	}
 
-	expectedValue = "keythree='valuethree'"
-	if p.config.Vars[2] != expectedValue {
-		t.Fatalf("%s should be equal to %s", p.config.Vars[2], expectedValue)
+	// Test with a good one
+	td, err := ioutil.TempDir("", "packer")
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+	defer os.RemoveAll(td)
+
+	facts := make(map[string]string)
+	facts["fact_name"] = "fact_value"
+	config["configuration_params"] = facts
+
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
 	}
 
-	expectedValue = "keyfour='value\nfour'"
-	if p.config.Vars[3] != expectedValue {
-		t.Fatalf("%s should be equal to %s", p.config.Vars[3], expectedValue)
+	// Make sure the default facts are present
+	delete(config, "configuration_params")
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if p.config.ConfigurationParams == nil {
+		t.Fatalf("err: Default facts are not set in the Puppet provisioner!")
 	}
 }
 
-func TestProvisionerProvision_Inline(t *testing.T) {
+func TestProvisionerProvision_mofFile(t *testing.T) {
+	config := testConfig()
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	mof_path, _ := ioutil.TempDir("/tmp", "packer")
+	defer os.Remove(mof_path)
 
+	config["configuration_name"] = "SomeProjectName"
+	config["mof_path"] = mof_path
+	config["module_paths"] = []string{"."}
+
+	// Test with valid values
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expectedCommand := `
+#
+# DSC Runner.
+#
+# Bootstraps the DSC environment, sets up configuration data
+# and runs the DSC Configuration.
+#
+#
+# Set the local PowerShell Module environment path
+
+$absoluteModulePaths = [string]::Join(";", ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { $_ | Resolve-Path }))
+echo "Adding to path: $absoluteModulePaths"
+$env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
+("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
+
+
+$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+echo "PSModulePath Configured: ${env:PSModulePath}"
+echo "Running Configuration file: ${script}"
+
+
+$StagingPath = "/tmp/packer-dsc-pull/mof"
+
+
+# Start a DSC Configuration run
+Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
+
+	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	}
 }
 
-func TestProvisionerProvision_Script(t *testing.T) {
+func TestProvisionerProvision_noConfigurationParams(t *testing.T) {
+	config := testConfig()
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	config["configuration_name"] = "SomeProjectName"
+	config["module_paths"] = []string{"."}
 
+	// Test with valid values
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expectedCommand := `
+#
+# DSC Runner.
+#
+# Bootstraps the DSC environment, sets up configuration data
+# and runs the DSC Configuration.
+#
+#
+# Set the local PowerShell Module environment path
+
+$absoluteModulePaths = [string]::Join(";", ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { $_ | Resolve-Path }))
+echo "Adding to path: $absoluteModulePaths"
+$env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
+("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
+
+
+$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+echo "PSModulePath Configured: ${env:PSModulePath}"
+echo "Running Configuration file: ${script}"
+
+
+# Generate the MOF file, only if a MOF path not already provided.
+# Import the Manifest
+. $script
+
+cd "/tmp/packer-dsc-pull"
+$StagingPath = $(Join-Path "/tmp/packer-dsc-pull" "staging")
+
+SomeProjectName -OutputPath $StagingPath 
+
+
+# Start a DSC Configuration run
+Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
+
+	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	}
+}
+
+func TestProvisionerProvision_configurationParams(t *testing.T) {
+	config := testConfig()
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	configurationParams := map[string]string{
+		"-Website": "Beanstalk",
+	}
+	config["configuration_name"] = "SomeProjectName"
+	config["configuration_params"] = configurationParams
+	config["module_paths"] = []string{"."}
+
+	// Test with valid values
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	err = p.Provision(ui, comm)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expectedCommand := `
+#
+# DSC Runner.
+#
+# Bootstraps the DSC environment, sets up configuration data
+# and runs the DSC Configuration.
+#
+#
+# Set the local PowerShell Module environment path
+
+$absoluteModulePaths = [string]::Join(";", ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { $_ | Resolve-Path }))
+echo "Adding to path: $absoluteModulePaths"
+$env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
+("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
+
+
+$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+echo "PSModulePath Configured: ${env:PSModulePath}"
+echo "Running Configuration file: ${script}"
+
+
+# Generate the MOF file, only if a MOF path not already provided.
+# Import the Manifest
+. $script
+
+cd "/tmp/packer-dsc-pull"
+$StagingPath = $(Join-Path "/tmp/packer-dsc-pull" "staging")
+
+SomeProjectName -OutputPath $StagingPath -Website "Beanstalk"
+
+
+# Start a DSC Configuration run
+Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
+
+	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	}
 }

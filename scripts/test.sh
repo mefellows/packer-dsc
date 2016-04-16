@@ -1,9 +1,15 @@
 #!/bin/sh
-
-# Run Test Suite
 go test -race -v ./...
  
+# Get Test dependencies
+go get github.com/axw/gocov/gocov
+go get github.com/mattn/goveralls
+go get golang.org/x/tools/cmd/cover
+go get code.google.com/p/go.tools/cmd/cover
+go get github.com/modocache/gover
+
 # Run test coverage on each subdirectories and merge the coverage profile.
+ 
 echo "mode: count" > profile.cov
  
 # Standard go tooling behavior is to ignore dirs with leading underscors
@@ -17,5 +23,4 @@ for dir in $(find . -maxdepth 10 -not -path './.git*' -not -path '*/_*' -type d)
   fi
 done
  
-# Create the coverage report for submission to Coveralls
 go tool cover -func profile.cov
