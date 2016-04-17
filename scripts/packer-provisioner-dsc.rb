@@ -6,7 +6,7 @@ class PackerProvisionerDsc < Formula
 
   if Hardware.is_64_bit?
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_amd64.zip"
-    sha1 'dc0c48262c7eb162906c0982c6a4611bce7530f7'
+    sha1 'fb347ef854c2020d182f0661b04842d62f6d3cab'
   else
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_386.zip"
     sha1 '22e1b8facb397c51d8fd840806cb571a550adeb4'
@@ -15,7 +15,7 @@ class PackerProvisionerDsc < Formula
   depends_on :arch => :intel
 
   def install
-    pluginpath = Pathname.new("#{ENV['HOME']}/.packer.d/plugins")
+    pluginpath = Pathname.new("/Users/#{ENV['USER']}/.packer.d/plugins")
 
     unless File.directory?(pluginpath)
       mkdir_p(pluginpath)
