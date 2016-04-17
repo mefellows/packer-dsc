@@ -18,7 +18,7 @@ GIT_DIRTY=$(test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 # If its dev mode, only build for ourself
 if [ "${TF_DEV}x" != "x" ]; then
     XC_OS=${XC_OS:-$(go env GOOS)}
-    XC_ARCH=${XC_ARCH:-$(go env GOARCH)}
+    XC_ARCH="386 amd64"
 fi
 
 # Determine the arch/os combos we're building for
@@ -64,6 +64,16 @@ for F in $(find ${DEV_PLATFORM} -mindepth 1 -maxdepth 1 -type f); do
     cp ${F} bin/
     cp ${F} ${MAIN_GOPATH}/bin/
 done
+
+# If its dev mode, update the shasums in parity.rb
+if [ "${TF_DEV}x" != "x" ]; then
+    # Update parity.rb
+    echo "==> Updating ./scripts/parity.rb with latest SHASUMS"
+    HASH32=$(shasum -a 1 pkg/darwin_386/packer-provisioner-dsc | cut -d" " -f 1)
+    HASH64=$(shasum -a 1 pkg/darwin_amd64/packer-provisioner-dsc | cut -d" " -f 1)
+    sed -i "9s/sha1 '\(.*\)'/sha1 '${HASH32}'/g" scripts/dsc.rb
+    sed -i "12s/sha1 '\(.*\)'/sha1 '${HASH64}'/g" scripts/dsc.rb
+fi
 
 # Done!
 echo

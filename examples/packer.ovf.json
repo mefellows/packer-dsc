@@ -1,0 +1,71 @@
+{
+  "variables": {
+    "vpc_id": "",
+    "subnet_id": "",
+    "source_ami": "",
+    "major_version": "1.0.",
+    "region": "ap-southeast-2",
+    "ovf_source_path": "",
+    "build_number": "{{env `BUILD_NUMBER`}}"
+  },
+  "builders": [
+    {
+      "type": "virtualbox-ovf",
+      "name": "devbox-vbox",
+      "communicator": "winrm",
+      "source_path": "{{user `ovf_source_path`}}",
+      "headless": false,
+      "guest_additions_mode": "disable",
+      "boot_wait": "30s",
+      "winrm_username": "vagrant",
+      "winrm_password": "vagrant",
+      "winrm_timeout": "5m",
+      "winrm_port":5985,
+      "winrm_host":"localhost",
+      "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
+      "shutdown_timeout": "10m",
+      "http_dir":"/tmp",
+      "vboxmanage": [
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--memory",
+          "2048"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--vram",
+          "64"
+        ],
+        [
+          "modifyvm",
+          "{{.Name}}",
+          "--cpus",
+          "2"
+        ]
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "type":"powershell",
+      "scripts": [
+        "scripts/provision.ps1"
+      ]
+    },
+    {
+      "type": "dsc-push",
+      "configuration_name": "Beanstalk",
+      "configuration_file": "manifests/BeanstalkConfig.psd1",
+      "manifest_file": "manifests/Beanstalk.ps1",
+      "module_paths": [
+        "modules"
+      ],
+      "configuration_params": {
+        "-WebAppPath": "c:\\tmp",
+        "-MachineName": "localhost"
+      }
+    }
+  ]
+}

@@ -1,48 +1,13 @@
-# Packer DSC Provisioner
+---
+description: |
+DSC (local) Packer provisioner configures DSC to run on the
+machines by Packer from local modules and manifest files. Modules and manifests
+can be uploaded from your local machine to the remote machine.
+layout: docs
+page_title: 'DSC (Local) Provisioner'
+...
 
-A [Desired State Configuration](http://technet.microsoft.com/en-au/library/dn249912.aspx) provisioner for [Packer.io](http://packer.io), the machine image automation tool, allowing you to automate the generation of your Windows machine images in a repeatable, reliable way.
-
-Works nicely when combined with a Vagrant development workflow, possibly leveraging the [Vagrant DSC](https://github.com/mefellows/vagrant-dsc) plugin.
-
-[![Coverage Status](https://coveralls.io/repos/github/mefellows/packer-dsc/badge.svg?branch=HEAD)](https://coveralls.io/github/mefellows/packer-dsc?branch=HEAD)
-[![wercker status](https://app.wercker.com/status/ef7336f65a3636531141a653e775d58f/s "wercker status")](https://app.wercker.com/project/bykey/ef7336f65a3636531141a653e775d58f)
-
-### Getting Started
-
-The plugin can be used by downloading pre-built binary, or by building the project locally and ensuring the binary is installed in the correct location.
-
-### On Mac OSX using Homebrew
-
-If you are using [Homebrew](http://brew.sh) you can follow these steps to install the plugins:
-
-```
-brew install https://raw.githubusercontent.com/mefellows/packer-dsc/master/scripts/dsc.rb
-```
-
-### Using pre-built binaries
-
-1. Install Packer
-1. Download the latest release for your host environment: [packer-windows-plugins/releases](https://github.com/mefellows/packer-dsc/releases)
-1. Unzip the plugin binaries to [a location where Packer will detect them at run-time](https://packer.io/docs/extend/plugins.html), such as any of the following:
-  - The directory where the packer binary is.
-  - `~/.packer.d/plugins` on Unix systems or `%APPDATA%/packer.d/plugins` on Windows.
-  - The current working directory.
-1. Change to a directory where you have packer templates, and run as usual.
-
-### Using a local build
-
-With [Go 1.2+](http://golang.org) installed, follow these steps to use these community plugins for Windows:
-
-1. Install packer
-1. Clone this repo
-1. Run `make dev`
-1. Copy the plugin binaries located in `./bin` to [a location where Packer will detect them at run-time](https://packer.io/docs/extend/plugins.html), such as any of the following:
-  - The directory where the packer binary is. If you've built Packer locally, then Packer and the new plugins are already in `$GOPATH/bin` together.
-  - `~/.packer.d/plugins` on Unix systems or `%APPDATA%/packer.d` on Windows.
-  - The current working directory.
-1. Change to a directory where you have packer templates, and run as usual.
-
-# Introduction
+# DSC Provisioner
 
 Type: `dsc`
 
@@ -160,7 +125,3 @@ contain various template variables, defined below:
 -   `ModulePath` - The path to a directory on the remote machine containing the manifest files.
 -   `MofPath` - The path to a directory containing any existing MOF file(s) to use.
 -  
-
-## Examples
-
-See the [Examples](examples) directory.

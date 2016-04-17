@@ -3,6 +3,7 @@ package dsc
 import (
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestProvisioner_Impl(t *testing.T) {
 func TestProvisionerPrepare_configurationFileDataPath(t *testing.T) {
 	config := testConfig()
 
-	delete(config, "configuration_file_path")
+	delete(config, "configuration_file")
 	p := new(Provisioner)
 	err := p.Prepare(config)
 	if err != nil {
@@ -50,7 +51,7 @@ func TestProvisionerPrepare_configurationFileDataPath(t *testing.T) {
 	}
 	defer os.Remove(tf.Name())
 
-	config["configuration_file_path"] = tf.Name()
+	config["configuration_file"] = tf.Name()
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
@@ -210,6 +211,16 @@ func TestProvisionerProvision_mofFile(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	s := comm.StartCmd.Command
+	re := regexp.MustCompile(`powershell \"\& \{ ([a-zA-Z0-9-\/]+).*`)
+	command := re.FindStringSubmatch(s)[1]
+
+	bytes, err := ioutil.ReadFile(command)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	scriptContents := strings.TrimSpace(string(bytes))
+
 	expectedCommand := `
 #
 # DSC Runner.
@@ -226,7 +237,7 @@ $env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
 ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
 
 
-$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+$script = $("/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" | Resolve-Path)
 echo "PSModulePath Configured: ${env:PSModulePath}"
 echo "Running Configuration file: ${script}"
 
@@ -237,8 +248,8 @@ $StagingPath = "/tmp/packer-dsc-pull/mof"
 # Start a DSC Configuration run
 Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 
-	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
-		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	if scriptContents != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), scriptContents)
 	}
 }
 
@@ -263,6 +274,16 @@ func TestProvisionerProvision_noConfigurationParams(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	s := comm.StartCmd.Command
+	re := regexp.MustCompile(`powershell \"\& \{ ([a-zA-Z0-9-\/]+).*`)
+	command := re.FindStringSubmatch(s)[1]
+
+	bytes, err := ioutil.ReadFile(command)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	scriptContents := strings.TrimSpace(string(bytes))
+
 	expectedCommand := `
 #
 # DSC Runner.
@@ -279,7 +300,7 @@ $env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
 ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
 
 
-$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+$script = $("/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" | Resolve-Path)
 echo "PSModulePath Configured: ${env:PSModulePath}"
 echo "Running Configuration file: ${script}"
 
@@ -297,8 +318,8 @@ SomeProjectName -OutputPath $StagingPath
 # Start a DSC Configuration run
 Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 
-	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
-		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	if scriptContents != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), scriptContents)
 	}
 }
 
@@ -327,6 +348,16 @@ func TestProvisionerProvision_configurationParams(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	s := comm.StartCmd.Command
+	re := regexp.MustCompile(`powershell \"\& \{ ([a-zA-Z0-9-\/]+).*`)
+	command := re.FindStringSubmatch(s)[1]
+
+	bytes, err := ioutil.ReadFile(command)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	scriptContents := strings.TrimSpace(string(bytes))
+
 	expectedCommand := `
 #
 # DSC Runner.
@@ -343,7 +374,7 @@ $env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
 ("/tmp/packer-dsc-pull/module-0".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
 
 
-$script = $(Join-Path "" "/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" -Resolve)
+$script = $("/tmp/packer-dsc-pull/manifest/packer-dsc-pull-manifest" | Resolve-Path)
 echo "PSModulePath Configured: ${env:PSModulePath}"
 echo "Running Configuration file: ${script}"
 
@@ -361,7 +392,7 @@ SomeProjectName -OutputPath $StagingPath -Website "Beanstalk"
 # Start a DSC Configuration run
 Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 
-	if strings.TrimSpace(comm.StartCmd.Command) != strings.TrimSpace(expectedCommand) {
-		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), strings.TrimSpace(comm.StartCmd.Command))
+	if scriptContents != strings.TrimSpace(expectedCommand) {
+		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), scriptContents)
 	}
 }

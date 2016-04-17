@@ -25,7 +25,7 @@ type Config struct {
 	// Configuration data is used to parameterise the configuration_file.
 	//
 	// Path is relative to the folder containing the Packer json.
-	ConfigurationFilePath string `mapstructure:"configuration_file_path"`
+	ConfigurationFilePath string `mapstructure:"configuration_file"`
 
 	// Relative path to the folder containing the root Configuration manifest file.
 	// Defaults to 'manifests'.
@@ -50,26 +50,16 @@ type Config struct {
 	// environment to enable local modules to be addressed.
 	ModulePaths []string `mapstructure:"module_paths"`
 
-	// The type of synced folders to use when sharing the data
-	// required for the provisioner to work properly.
-	//
-	// By default this will use the default synced folder type.
-	// For example, you can set this to "nfs" to use NFS synced folders.
-	SyncedFolderType string `mapstructure:"synced_folder_type"`
-
-	// Temporary working directory on the guest machine.
-	TempDir string `mapstructure:"temp_dir"`
-
 	// The directory where files will be uploaded. Packer requires write
 	// permissions in this directory.
-	StagingDir string `mapstructure:"staging_directory"`
+	StagingDir string `mapstructure:"staging_dir"`
 
 	// If true, staging directory is removed after executing dsc.
-	CleanStagingDir bool `mapstructure:"clean_staging_directory"`
+	CleanStagingDir bool `mapstructure:"clean_staging_dir"`
 
 	// The directory from which the command will be executed.
 	// Packer requires the directory to exist when running dsc.
-	WorkingDir string `mapstructure:"working_directory"`
+	WorkingDir string `mapstructure:"working_dir"`
 
 	// If true, packer will ignore all exit-codes from a dsc run
 	IgnoreExitCodes bool `mapstructure:"ignore_exit_codes"`

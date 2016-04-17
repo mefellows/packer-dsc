@@ -7,6 +7,7 @@ package dsc
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,7 @@ $env:PSModulePath="$absoluteModulePaths;${env:PSModulePath}"
 ("{{.ModulePath}}".Split(";") | ForEach-Object { gci -Recurse  $_ | ForEach-Object { Unblock-File  $_.FullName} })
 {{end}}
 
-$script = $(Join-Path "" "{{.ManifestFile}}" -Resolve)
+$script = $("{{.ManifestFile}}" | Resolve-Path)
 echo "PSModulePath Configured: ${env:PSModulePath}"
 echo "Running Configuration file: ${script}"
 
@@ -75,7 +76,7 @@ echo "Running Configuration file: ${script}"
 cd "{{.WorkingDir}}"
 $StagingPath = $(Join-Path "{{.WorkingDir}}" "staging")
 {{if ne .ConfigurationFilePath ""}}
-$Config = $(iex (Get-Content (Join-Path "{{.WorkingDir}}" "{{.ConfigurationFilePath}}" -Resolve) | Out-String))
+$Config = $(iex (Get-Content ("{{.ConfigurationFilePath}}" | Resolve-Path) | Out-String))
 {{end}}
 {{.ConfigurationName}} -OutputPath $StagingPath {{.ConfigurationParams}}{{if ne .ConfigurationFilePath ""}} -ConfigurationData $Config{{end}}
 {{else}}
@@ -104,10 +105,10 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 		info, err := os.Stat(p.config.ConfigurationFilePath)
 		if err != nil {
 			errs = packer.MultiErrorAppend(errs,
-				fmt.Errorf("configuration_file_path is invalid: %s", err))
+				fmt.Errorf("configuration_file is invalid: %s", err))
 		} else if info.IsDir() {
 			errs = packer.MultiErrorAppend(errs,
-				fmt.Errorf("configuration_file_path must point to a file"))
+				fmt.Errorf("configuration_file must point to a file"))
 		}
 	}
 
@@ -131,6 +132,10 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 			errs = packer.MultiErrorAppend(errs,
 				fmt.Errorf("manifest_file is invalid: %s", err))
 		}
+	}
+
+	if p.config.ConfigurationName == "" {
+		p.config.ConfigurationName = strings.Split(filepath.Base(p.config.ManifestFile), ".")[0]
 	}
 
 	for i, path := range p.config.ModulePaths {
@@ -219,7 +224,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	}
 
 	// Execute DSC script template
-	p.config.ctx.Data = &ExecuteTemplate{
+	tmpl := &ExecuteTemplate{
 		ConfigurationParams:   strings.Join(configurationVars, " "),
 		ConfigurationFilePath: remoteConfigurationFilePath,
 		ManifestDir:           remoteManifestDir,
@@ -229,12 +234,23 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		ConfigurationName:     p.config.ConfigurationName,
 		MofPath:               remoteMofPath,
 	}
-	command, err := interpolate.Render(p.config.ExecuteCommand, &p.config.ctx)
 
+	p.config.ctx.Data = tmpl
+
+	// Create the DSC script
+	runner, err := p.createDscScript(*tmpl)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error creating DSC runner: %s", err)
 	}
 
+	// Upload runner to temporary remote path
+	remoteScriptPath, err := p.uploadDscRunner(ui, comm, runner)
+	if err != nil {
+		return fmt.Errorf("Error uploading DSC runner: %s", err)
+	}
+
+	// Return command to run the DSC Runner
+	command := fmt.Sprintf(`powershell "& { %s; exit $LastExitCode}"`, remoteScriptPath)
 	cmd := &packer.RemoteCmd{
 		Command: command,
 	}
@@ -254,6 +270,19 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		}
 	}
 	return nil
+}
+
+func (p *Provisioner) createDscScript(tpml ExecuteTemplate) (string, error) {
+	command, err := interpolate.Render(p.config.ExecuteCommand, &p.config.ctx)
+
+	if err != nil {
+		return "", err
+	}
+
+	file, _ := ioutil.TempFile("/tmp", "packer-dsc-runner")
+	err = ioutil.WriteFile(file.Name(), []byte(command), 0655)
+
+	return file.Name(), err
 }
 
 func (p *Provisioner) Cancel() {
@@ -302,9 +331,26 @@ func (p *Provisioner) uploadManifest(ui packer.Ui, comm packer.Communicator) (st
 	return remoteManifestFile, nil
 }
 
+func (p *Provisioner) uploadDscRunner(ui packer.Ui, comm packer.Communicator, file string) (string, error) {
+	ui.Message("Uploading runner...")
+	ui.Message(fmt.Sprintf("Uploading DSC runner from: %s", file))
+
+	f, err := os.Open(file)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	remoteDscFile := fmt.Sprintf("/tmp/%s.ps1", filepath.Base(file))
+	if err := comm.Upload(remoteDscFile, f, nil); err != nil {
+		return "", err
+	}
+	return remoteDscFile, nil
+}
+
 func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
-		Command: fmt.Sprintf("mkdir '%s' -Force -ErrorAction SilentlyContinue", dir),
+		Command: fmt.Sprintf("powershell.exe -Command \"New-Item -ItemType directory -Force -ErrorAction SilentlyContinue -Path %s\"", dir),
 	}
 
 	if err := cmd.StartWithUi(comm, ui); err != nil {
@@ -320,7 +366,7 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 
 func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir string) error {
 	cmd := &packer.RemoteCmd{
-		Command: fmt.Sprintf("rm -fr '%s'", dir),
+		Command: fmt.Sprintf("powershell.exe -Command \"Remove-Item '%s' -Recurse -Force\"", dir),
 	}
 
 	if err := cmd.StartWithUi(comm, ui); err != nil {
