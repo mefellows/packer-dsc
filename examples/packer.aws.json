@@ -33,7 +33,7 @@
       ]
     },
     {
-      "type": "dsc-push",
+      "type": "dsc",
       "configuration_name": "Beanstalk",
       "configuration_file": "manifests/BeanstalkConfig.psd1",
       "manifest_file": "manifests/Beanstalk.ps1",

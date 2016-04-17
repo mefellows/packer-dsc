@@ -2,7 +2,7 @@ require 'formula'
 
 class PackerDscProvisioner < Formula
   homepage "https://github.com/mefellows/packer-dsc/"
-  version "0.0.1-pre-release"
+  version "0.0.1"
 
   if Hardware.is_64_bit?
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_amd64.zip"
@@ -39,7 +39,7 @@ class PackerDscProvisioner < Formula
       ],
       "provisioners": [
         {
-          "type": "dsc-push",
+          "type": "dsc",
           "configuration_name": "Beanstalk",
           "configuration_file": "manifests/BeanstalkConfig.psd1",
           "manifest_file": "manifests/Beanstalk.ps1",
