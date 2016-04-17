@@ -16,7 +16,7 @@ The plugin can be used by downloading pre-built binary, or by building the proje
 If you are using [Homebrew](http://brew.sh) you can follow these steps to install the plugins:
 
 ```
-brew install https://raw.githubusercontent.com/mefellows/packer-dsc/master/scripts/dsc.rb
+brew install https://raw.githubusercontent.com/mefellows/packer-dsc/master/scripts/packer-provisioner-dsc.rb
 ```
 
 ### Using pre-built binaries

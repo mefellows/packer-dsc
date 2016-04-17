@@ -71,8 +71,8 @@ if [ "${TF_DEV}x" != "x" ]; then
     echo "==> Updating ./scripts/parity.rb with latest SHASUMS"
     HASH32=$(shasum -a 1 pkg/darwin_386/packer-provisioner-dsc | cut -d" " -f 1)
     HASH64=$(shasum -a 1 pkg/darwin_amd64/packer-provisioner-dsc | cut -d" " -f 1)
-    sed -i "9s/sha1 '\(.*\)'/sha1 '${HASH32}'/g" scripts/dsc.rb
-    sed -i "12s/sha1 '\(.*\)'/sha1 '${HASH64}'/g" scripts/dsc.rb
+    sed -i "9s/sha1 '\(.*\)'/sha1 '${HASH32}'/g" scripts/packer-provisioner-dsc.rb
+    sed -i "12s/sha1 '\(.*\)'/sha1 '${HASH64}'/g" scripts/packer-provisioner-dsc.rb
 fi
 
 # Done!

@@ -1,6 +1,6 @@
 require 'formula'
 
-class PackerDscProvisioner < Formula
+class PackerProvisionerDsc < Formula
   homepage "https://github.com/mefellows/packer-dsc/"
   version "0.0.1"
 
