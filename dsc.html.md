@@ -61,6 +61,11 @@ Optional parameters:
 -   `module_paths` (array of strings) -  Set of relative module paths.
      These paths are added to the DSC Configuration running environment to enable local modules to be addressed.
 
+
+-   `resource_paths` (array of strings) -  Set of DSC Resources to upload for system-wide use.
+     These paths are uploaded into `%SystemDrive%\WindowsPowershell\Modules` to be used system-wide, unlike
+     `module_paths` which is scoped to the current Configuration.     
+
 -   `staging_dir` (string) - The directory where files will be uploaded.
     Packer requires write  permissions in this directory.
 

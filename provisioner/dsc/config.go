@@ -50,6 +50,12 @@ type Config struct {
 	// environment to enable local modules to be addressed.
 	ModulePaths []string `mapstructure:"module_paths"`
 
+	// Set of DSC resources to upload for system-wide use.
+	//
+	// These paths are uploaded into %SystemDrive%\WindowsPowershell\Modules
+	// to be used system-wide.
+	ResourcePaths []string `mapstructure:"resource_paths"`
+
 	// The directory where files will be uploaded. Packer requires write
 	// permissions in this directory.
 	StagingDir string `mapstructure:"staging_dir"`

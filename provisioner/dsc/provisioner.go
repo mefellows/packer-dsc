@@ -197,6 +197,15 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		modulePaths = append(modulePaths, targetPath)
 	}
 
+	// Upload all system-wide resources
+	for _, path := range p.config.ResourcePaths {
+		ui.Message(fmt.Sprintf("Uploading global DSC Resources from: %s", path))
+		targetPath := fmt.Sprintf("%SystemDrive%\\WindowsPowershell\\Modules", filepath.Base(path))
+		if err := p.uploadDirectory(ui, comm, targetPath, path); err != nil {
+			return fmt.Errorf("Error uploading global DSC Resource: %s", err)
+		}
+	}
+
 	// Upload pre-generated MOF
 	remoteMofPath := ""
 	if p.config.MofPath != "" {
