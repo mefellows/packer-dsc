@@ -2,7 +2,7 @@ require 'formula'
 
 class PackerProvisionerDsc < Formula
   homepage "https://github.com/mefellows/packer-dsc/"
-  version "0.0.1"
+  version "0.0.1-pre-release"
 
   if Hardware.is_64_bit?
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_amd64.zip"
