@@ -159,7 +159,6 @@ contain various template variables, defined below:
     DSC to use.
 -   `ModulePath` - The path to a directory on the remote machine containing the manifest files.
 -   `MofPath` - The path to a directory containing any existing MOF file(s) to use.
--  
 
 ## Examples
 
