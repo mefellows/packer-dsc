@@ -24,7 +24,6 @@
       "winrm_host":"localhost",
       "shutdown_command": "shutdown /s /t 10 /f /d p:4:1 /c \"Packer Shutdown\"",
       "shutdown_timeout": "10m",
-      "http_dir":"/tmp",
       "vboxmanage": [
         [
           "modifyvm",
@@ -50,8 +49,14 @@
   "provisioners": [
     {
       "type":"powershell",
-      "scripts": [
-        "scripts/provision.ps1"
+      "inline": [
+        "Write-Verbose 'Install PackageManagement'",
+        "(New-Object System.Net.WebClient).DownloadFile('https://download.microsoft.com/download/C/4/1/C41378D4-7F41-4BBE-9D0D-0E4F98585C61/PackageManagement_x64.msi','c:\\PackageManagement_x64.msi')",
+        "msiexec /qb /i C:\\PackageManagement_x64.msi",
+        "Start-Sleep -s 5",
+        "Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force",
+        "Install-Module -Name xWebAdministration -Force",
+        "Get-DSCResource"
       ]
     },
     {
@@ -61,6 +66,9 @@
       "manifest_file": "manifests/Beanstalk.ps1",
       "module_paths": [
         "modules"
+      ],
+      "resource_paths": [
+        "resources/cSelfSignedCert"
       ],
       "configuration_params": {
         "-WebAppPath": "c:\\tmp",
