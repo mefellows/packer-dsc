@@ -6,10 +6,10 @@ class PackerProvisionerDsc < Formula
 
   if Hardware.is_64_bit?
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_amd64.zip"
-    sha1 'fb347ef854c2020d182f0661b04842d62f6d3cab'
+    sha1 '99d3a857486770821f71b22482d3df56715cefc0'
   else
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_386.zip"
-    sha1 '22e1b8facb397c51d8fd840806cb571a550adeb4'
+    sha1 '9cf1e701620e355ffd6fa6dd93a9314cfca5321a'
   end
 
   depends_on :arch => :intel
