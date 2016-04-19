@@ -211,7 +211,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	// Upload all system-wide resources
 	for _, path := range p.config.ResourcePaths {
 		ui.Message(fmt.Sprintf("Uploading global DSC Resources from: %s", path))
-		targetPath := fmt.Sprintf(`%s\%s`, `%SystemDrive%\WindowsPowershell\Modules`, filepath.Base(path))
+		targetPath := fmt.Sprintf(`%s\%s`, `${env:SystemDrive}\WindowsPowershell\Modules`, filepath.Base(path))
 		if err := p.uploadDirectory(ui, comm, targetPath, path); err != nil {
 			return fmt.Errorf("Error uploading global DSC Resource: %s", err)
 		}
