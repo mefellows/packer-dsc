@@ -4,12 +4,18 @@ A [Desired State Configuration](http://technet.microsoft.com/en-au/library/dn249
 
 Works nicely when combined with a Vagrant development workflow, possibly leveraging the [Vagrant DSC](https://github.com/mefellows/vagrant-dsc) plugin.
 
+Features:
+* Automatically run DSC on a remote machine, from local DSC Configurations.
+* Automatically configure PowerShell Package Management (specify `install_package_management` as `true`)
+* Install DSC Resources from local or remote sources, including the PowerShell Gallery (see `resource_paths` and `install_modules`)
+* Ability to use pre-generated MOF files, if required
+
 [![Coverage Status](https://coveralls.io/repos/github/mefellows/packer-dsc/badge.svg?branch=HEAD)](https://coveralls.io/github/mefellows/packer-dsc?branch=HEAD)
 [![wercker status](https://app.wercker.com/status/ef7336f65a3636531141a653e775d58f/s "wercker status")](https://app.wercker.com/project/bykey/ef7336f65a3636531141a653e775d58f)
 
 ### Getting Started
 
-The plugin can be used by downloading pre-built binary, or by building the project locally and ensuring the binary is installed in the correct location.
+The plugin can be used by downloading the pre-built binary, or by building the project locally and ensuring the binary is installed in the correct location.
 
 ### On Mac OSX using Homebrew
 
@@ -38,7 +44,7 @@ With [Go 1.2+](http://golang.org) installed, follow these steps to use these com
 1. Run `make dev`
 1. Copy the plugin binaries located in `./bin` to [a location where Packer will detect them at run-time](https://packer.io/docs/extend/plugins.html), such as any of the following:
   - The directory where the packer binary is. If you've built Packer locally, then Packer and the new plugins are already in `$GOPATH/bin` together.
-  - `~/.packer.d/plugins` on Unix systems or `%APPDATA%/packer.d` on Windows.
+  - `~/.packer.d/plugins` on Unix systems or `%APPDATA%/packer.d/plugins` on Windows.
   - The current working directory.
 1. Change to a directory where you have packer templates, and run as usual.
 
@@ -83,22 +89,31 @@ Required parameters:
 
 Optional parameters:
 
--   `configuration_name` (string) -  The name of the Configuration module. Defaults to the base name of
-    the `manifest_file`. e.g. `Default.ps1` would result in `Default`.
+-   `configuration_name` (string) -  The name of the Configuration module. Defaults to the base
+    name of the `manifest_file`. e.g. `Default.ps1` would result in `Default`.
 
 -   `mof_path` (string) -  Relative path to a folder, containing the pre-generated MOF file.
 
 -   `configuration_file` (string) -  Relative path to the DSC Configuration Data file.
     Configuration data is used to parameterise the configuration_file.
 
--   `configuration_params` (object of key/value strings) - Set of Parameters to pass to the DSC Configuration.
+-   `configuration_params` (object of key/value strings) - Set of Parameters to pass to the DSC
+     Configuration.
 
 -   `module_paths` (array of strings) -  Set of relative module paths.
      These paths are added to the DSC Configuration running environment to enable _local_ modules to be addressed.
 
 -   `resource_paths` (array of strings) -  Set of DSC Resources to upload for system-wide use.
-    These paths are uploaded into `%SystemDrive%\WindowsPowershell\Modules` to be used system-wide, unlike
+    These paths are uploaded into `${env:programfiles}\WindowsPowershell\Modules` to be used system-wide, unlike
     `module_paths` which is scoped to the current Configuration.
+
+    `install_modules` (array of strings) - Set of PowerShell modules to be installed
+    with the `Install-Module` command. See `install_package_management` if you would
+    like the DSC Provisioner to install this command for you.
+
+    `install_package_management` (bool) - Automatically installs the
+    [Package Management](https://github.com/OneGet/oneget) package manager
+    (formerly OneGet) on the server.    
 
 -   `staging_dir` (string) - The directory where files will be uploaded.
     Packer requires write  permissions in this directory.
@@ -109,7 +124,7 @@ Optional parameters:
     Packer requires the directory to exist when running DSC.
 
 -   `ignore_exit_codes` (boolean) - If true, Packer will never consider the
-provisioner a failure.
+     DSC provisioning process a failure.
 
 -   `execute_command` (string) -  The command used to execute DSC. This has
     various [configuration template

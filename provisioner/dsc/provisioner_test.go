@@ -22,7 +22,20 @@ func testConfig() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"manifest_file": filename,
+		"manifest_file":      filename,
+		"manifest_dir":       ".",
+		"configuration_file": "./provisioner_test.go",
+		"configuration_params": map[string]string{
+			"-Foo": "bar",
+		},
+		"resource_paths": []string{
+			".",
+		},
+		"install_package_management": true,
+		"install_modules": map[string]string{
+			"SomeModule1": "1.0.0",
+			"SomeModule2": "2.0.0",
+		},
 	}
 }
 
@@ -42,6 +55,22 @@ func TestProvisionerPrepare_configurationFileDataPath(t *testing.T) {
 	err := p.Prepare(config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
+	}
+
+	// Test one that doesn't exist
+	config["configuration_file"] = "does/not.exist"
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+
+	// And one that is a dir
+	config["configuration_file"] = "."
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
 	}
 
 	// Test with a good one
@@ -69,6 +98,14 @@ func TestProvisionerPrepare_manifestFile(t *testing.T) {
 		t.Fatal("should be an error")
 	}
 
+	// Test one that doesn't exist
+	config["manifest_file"] = "this/file/doesnt.exist"
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+
 	// Test with a good one
 	tf, err := ioutil.TempFile("", "packer")
 	if err != nil {
@@ -82,6 +119,7 @@ func TestProvisionerPrepare_manifestFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
+
 }
 
 func TestProvisionerPrepare_manifestDir(t *testing.T) {
@@ -92,6 +130,24 @@ func TestProvisionerPrepare_manifestDir(t *testing.T) {
 	err := p.Prepare(config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
+	}
+
+	// File is not a dir!
+	delete(config, "manifestdir")
+	config["manifest_dir"] = "./provisioner_test.go"
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+
+	// Dir not exist
+	delete(config, "manifestdir")
+	config["manifest_dir"] = "i/do/not/exist"
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
 	}
 
 	// Test with a good one
@@ -119,6 +175,14 @@ func TestProvisionerPrepare_modulePaths(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
+	// File is not a dir
+	config["module_paths"] = []string{"provisioner_test.go"}
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatal("should be an error")
+	}
+
 	// Test with bad paths
 	config["module_paths"] = []string{"i-should-not-exist"}
 	p = new(Provisioner)
@@ -135,6 +199,46 @@ func TestProvisionerPrepare_modulePaths(t *testing.T) {
 	defer os.RemoveAll(td)
 
 	config["module_paths"] = []string{td}
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+}
+func TestProvisionerPrepare_resourcePaths(t *testing.T) {
+	config := testConfig()
+
+	delete(config, "resource_paths")
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	// File is not a dir
+	config["resource_paths"] = []string{"provisioner_test.go"}
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatal("should be an error")
+	}
+
+	// Test with bad paths
+	config["resource_paths"] = []string{"i-should-not-exist"}
+	p = new(Provisioner)
+	err = p.Prepare(config)
+	if err == nil {
+		t.Fatal("should be an error")
+	}
+
+	// Test with a good one
+	td, err := ioutil.TempDir("", "packer")
+	if err != nil {
+		t.Fatalf("error: %s", err)
+	}
+	defer os.RemoveAll(td)
+
+	config["resource_paths"] = []string{td}
 	p = new(Provisioner)
 	err = p.Prepare(config)
 	if err != nil {
@@ -186,17 +290,128 @@ func TestProvisionerPrepare_configurationParams(t *testing.T) {
 	}
 }
 
+func TestProvisionerPrepare_installPackage(t *testing.T) {
+	config := testConfig()
+	config["install_modules"] = map[string]string{
+		"SomeModuleName":  "1.0.0",
+		"SomeModuleName2": "2.0.0",
+	}
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+}
+
+func TestProvisioner_installPackage(t *testing.T) {
+	config := testConfig()
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	config["install_modules"] = map[string]string{
+		"SomeModuleName":  "1.0.0",
+		"SomeModuleName2": "2.0.0",
+	}
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	err = p.installPackage(ui, comm, "SomeModuleName", "1.0.0")
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	expectedCommand := `powershell "& { Install-Module -Name SomeModuleName -RequiredVersion 1.0.0 -Force; exit $LastExitCode}"`
+	if comm.StartCmd.Command != expectedCommand {
+		t.Fatalf("Expected command '%s' but got '%s'", expectedCommand, comm.StartCmd.Command)
+	}
+	if !comm.StartCalled {
+		t.Fatalf("Expected '%s' to be called, but no remote call was made", expectedCommand)
+	}
+}
+
+func TestProvisioner_installPackageNonZeroExitCode(t *testing.T) {
+	config := testConfig()
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	comm.StartExitStatus = 2
+	config["install_modules"] = map[string]string{
+		"SomeModuleName":  "1.0.0",
+		"SomeModuleName2": "2.0.0",
+	}
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	err = p.installPackage(ui, comm, "SomeModuleName", "1.0.0")
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+}
+
+func TestProvisionerPrepare_installPackageManagement(t *testing.T) {
+	config := testConfig()
+	config["install_package_management"] = true
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+}
+
+func TestProvisioner_installPackageManagement(t *testing.T) {
+	config := testConfig()
+	config["install_package_management"] = true
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	err = p.installPackageManagement(ui, comm)
+	if err != nil {
+		t.Fatalf("Err: %s", err)
+	}
+}
+
+func TestProvisioner_installPackageManagementFail(t *testing.T) {
+	config := testConfig()
+	config["install_package_management"] = true
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	comm.StartExitStatus = 2
+	err = p.installPackageManagement(ui, comm)
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+}
+
 func TestProvisionerProvision_mofFile(t *testing.T) {
 	config := testConfig()
 	ui := &packer.MachineReadableUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
-	mof_path, _ := ioutil.TempDir("/tmp", "packer")
-	defer os.Remove(mof_path)
+	mofPath, _ := ioutil.TempDir("/tmp", "packer")
+	defer os.Remove(mofPath)
 
 	config["configuration_name"] = "SomeProjectName"
-	config["mof_path"] = mof_path
+	config["mof_path"] = mofPath
 	config["module_paths"] = []string{"."}
 
 	// Test with valid values
@@ -261,6 +476,8 @@ func TestProvisionerProvision_noConfigurationParams(t *testing.T) {
 	comm := new(packer.MockCommunicator)
 	config["configuration_name"] = "SomeProjectName"
 	config["module_paths"] = []string{"."}
+	delete(config, "configuration_file")
+	delete(config, "configuration_params")
 
 	// Test with valid values
 	p := new(Provisioner)
@@ -333,6 +550,7 @@ func TestProvisionerProvision_configurationParams(t *testing.T) {
 		"-Website": "Beanstalk",
 	}
 	config["configuration_name"] = "SomeProjectName"
+	delete(config, "configuration_file")
 	config["configuration_params"] = configurationParams
 	config["module_paths"] = []string{"."}
 
@@ -395,4 +613,28 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 	if scriptContents != strings.TrimSpace(expectedCommand) {
 		t.Fatalf("Expected:\n\n%s\n\nbut got: \n\n%s", strings.TrimSpace(expectedCommand), scriptContents)
 	}
+}
+
+func TestProvisioner_removeDir(t *testing.T) {
+	config := testConfig()
+	p := new(Provisioner)
+	err := p.Prepare(config)
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+	ui := &packer.MachineReadableUi{
+		Writer: ioutil.Discard,
+	}
+	comm := new(packer.MockCommunicator)
+	err = p.removeDir(ui, comm, "somedir")
+	if err != nil {
+		t.Fatalf("err: %s", err)
+	}
+
+	comm.StartExitStatus = 1
+	err = p.removeDir(ui, comm, "somedir")
+	if err == nil {
+		t.Fatalf("Expected error but got none")
+	}
+
 }
