@@ -28,7 +28,7 @@ brew install https://raw.githubusercontent.com/mefellows/packer-dsc/master/scrip
 ### Using pre-built binaries
 
 1. Install Packer
-1. Download the latest release for your host environment: [packer-windows-plugins/releases](https://github.com/mefellows/packer-dsc/releases)
+1. Download the latest [release](https://github.com/mefellows/packer-dsc/releases) for your host environment
 1. Unzip the plugin binaries to [a location where Packer will detect them at run-time](https://packer.io/docs/extend/plugins.html), such as any of the following:
   - The directory where the packer binary is.
   - `~/.packer.d/plugins` on Unix systems or `%APPDATA%/packer.d/plugins` on Windows.
