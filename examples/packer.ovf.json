@@ -18,7 +18,7 @@
       "guest_additions_mode": "disable",
       "boot_wait": "30s",
       "winrm_username": "vagrant",
-      "winrm_password": "vagrant",
+      "winrm_password": "FooBar@123",
       "winrm_timeout": "5m",
       "winrm_port":5985,
       "winrm_host":"localhost",
@@ -48,22 +48,14 @@
   ],
   "provisioners": [
     {
-      "type":"powershell",
-      "inline": [
-        "Write-Verbose 'Install PackageManagement'",
-        "(New-Object System.Net.WebClient).DownloadFile('https://download.microsoft.com/download/C/4/1/C41378D4-7F41-4BBE-9D0D-0E4F98585C61/PackageManagement_x64.msi','c:\\PackageManagement_x64.msi')",
-        "msiexec /qb /i C:\\PackageManagement_x64.msi",
-        "Start-Sleep -s 5",
-        "Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force",
-        "Install-Module -Name xWebAdministration -Force",
-        "Get-DSCResource"
-      ]
-    },
-    {
       "type": "dsc",
       "configuration_name": "Beanstalk",
       "configuration_file": "manifests/BeanstalkConfig.psd1",
       "manifest_file": "manifests/Beanstalk.ps1",
+      "install_package_management": true,
+      "install_modules": {
+        "xWebAdministration": "1.10.0.0"
+      },
       "module_paths": [
         "modules"
       ],

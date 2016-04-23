@@ -56,6 +56,15 @@ type Config struct {
 	// to be used system-wide.
 	ResourcePaths []string `mapstructure:"resource_paths"`
 
+	// Install the latest Windows PackageManagement software?
+	InstallPackageManagement bool `mapstructure:"install_package_management"`
+
+	// Modules to install, using the latest PackageManagement tooling
+	// e.g. { "xWebAdministration": "1.0.0.0" }
+	//
+	// See InstallPackageManagement if
+	InstallModules map[string]string `mapstructure:"install_modules"`
+
 	// The directory where files will be uploaded. Packer requires write
 	// permissions in this directory.
 	StagingDir string `mapstructure:"staging_dir"`

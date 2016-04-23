@@ -1,4 +1,4 @@
-// This package implements a provisioner for Packer that executes
+// Package dsc implements a provisioner for Packer that executes
 // DSC on the remote machine, configured to apply a local manifest
 // versus connecting to a DSC push server.
 //
@@ -17,10 +17,13 @@ import (
 	"github.com/mitchellh/packer/template/interpolate"
 )
 
+// Provisioner DSC
 type Provisioner struct {
 	config Config
 }
 
+// ExecuteTemplate contains the template variables interpolated
+// into the running DSC script
 type ExecuteTemplate struct {
 	WorkingDir            string
 	ConfigurationParams   string
@@ -32,6 +35,9 @@ type ExecuteTemplate struct {
 	MofPath               string
 }
 
+var powershellTemplate = `powershell "& { %s; exit $LastExitCode}"`
+
+// Prepare sets up the DSC configuration
 func (p *Provisioner) Prepare(raws ...interface{}) error {
 	err := config.Decode(&p.config, &config.DecodeOpts{
 		Interpolate:        true,
@@ -167,11 +173,17 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 	return nil
 }
 
+// Provision the remote machine with DSC
 func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	ui.Say("Provisioning with DSC...")
 	ui.Message("Creating DSC staging directory...")
 	if err := p.createDir(ui, comm, p.config.StagingDir); err != nil {
 		return fmt.Errorf("Error creating staging directory: %s", err)
+	}
+
+	// Install PackageManagement
+	if p.config.InstallPackageManagement {
+		p.installPackageManagement(ui, comm)
 	}
 
 	// Upload configuration_params config if set
@@ -193,6 +205,14 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		err := p.uploadDirectory(ui, comm, remoteManifestDir, p.config.ManifestDir)
 		if err != nil {
 			return fmt.Errorf("Error uploading manifest dir: %s", err)
+		}
+	}
+
+	// Install any remote PowerShell modules
+	for k, v := range p.config.InstallModules {
+		err := p.installPackage(ui, comm, k, v)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -270,7 +290,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	}
 
 	// Return command to run the DSC Runner
-	command := fmt.Sprintf(`powershell "& { %s; exit $LastExitCode}"`, remoteScriptPath)
+	command := fmt.Sprintf(powershellTemplate, remoteScriptPath)
 	cmd := &packer.RemoteCmd{
 		Command: command,
 	}
@@ -305,6 +325,7 @@ func (p *Provisioner) createDscScript(tpml ExecuteTemplate) (string, error) {
 	return file.Name(), err
 }
 
+// Cancel a running DSC session. This is a no-op
 func (p *Provisioner) Cancel() {
 	// Just hard quit. It isn't a big deal if what we're doing keeps
 	// running on the other side.
@@ -352,7 +373,6 @@ func (p *Provisioner) uploadManifest(ui packer.Ui, comm packer.Communicator) (st
 }
 
 func (p *Provisioner) uploadDscRunner(ui packer.Ui, comm packer.Communicator, file string) (string, error) {
-	ui.Message("Uploading runner...")
 	ui.Message(fmt.Sprintf("Uploading DSC runner from: %s", file))
 
 	f, err := os.Open(file)
@@ -395,6 +415,69 @@ func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir stri
 
 	if cmd.ExitStatus != 0 {
 		return fmt.Errorf("Non-zero exit status.")
+	}
+
+	return nil
+}
+
+// Template to upload as a script and provision Package Management
+var installTemplate = `
+	Write-Verbose 'Install PackageManagement'
+	(New-Object System.Net.WebClient).DownloadFile('https://download.microsoft.com/download/C/4/1/C41378D4-7F41-4BBE-9D0D-0E4F98585C61/PackageManagement_x64.msi','c:\PackageManagement_x64.msi')
+	Start-Process -FilePath "msiexec.exe" -ArgumentList "/qb /i C:\PackageManagement_x64.msi" -Wait -Passthru
+	Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+	Get-DSCResource
+`
+
+// Install a package on the remote host
+func (p *Provisioner) installPackageManagement(ui packer.Ui, comm packer.Communicator) error {
+	ui.Message("Installing PowerShell Package Management")
+
+	// Inject template variables
+	script, err := interpolate.Render(installTemplate, &p.config.ctx)
+	if err != nil {
+		return err
+	}
+
+	// Upload script
+	file, _ := ioutil.TempFile("/tmp", "packer-dsc-packagemanagement")
+	err = ioutil.WriteFile(file.Name(), []byte(script), 0655)
+
+	remoteScriptFile := fmt.Sprintf("/tmp/%s.ps1", filepath.Base(file.Name()))
+	if err := comm.Upload(remoteScriptFile, file, nil); err != nil {
+		return err
+	}
+
+	// Run script
+	cmd := &packer.RemoteCmd{
+		Command: fmt.Sprintf(`powershell "& { %s; exit $LastExitCode}"`, remoteScriptFile),
+	}
+
+	if err := cmd.StartWithUi(comm, ui); err != nil {
+		return err
+	}
+
+	if cmd.ExitStatus != 0 {
+		return fmt.Errorf("Install Package Management return a non-zero exit status: %d", cmd.ExitStatus)
+	}
+
+	return nil
+}
+
+// Install a package on the remote host
+func (p *Provisioner) installPackage(ui packer.Ui, comm packer.Communicator, pkg string, version string) error {
+	ui.Message(fmt.Sprintf("Installing PowerShell package '%s'", pkg))
+
+	cmd := &packer.RemoteCmd{
+		Command: fmt.Sprintf(powershellTemplate, fmt.Sprintf("Install-Module -Name %s -RequiredVersion %s -Force", pkg, version)),
+	}
+
+	if err := cmd.StartWithUi(comm, ui); err != nil {
+		return err
+	}
+
+	if cmd.ExitStatus != 0 {
+		return fmt.Errorf("PowerShell module install exited with a non-zero exit status: %d", cmd.ExitStatus)
 	}
 
 	return nil

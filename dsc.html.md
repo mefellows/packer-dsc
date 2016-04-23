@@ -66,6 +66,14 @@ Optional parameters:
      These paths are uploaded into `%SystemDrive%\WindowsPowershell\Modules` to be used system-wide, unlike
      `module_paths` which is scoped to the current Configuration.     
 
+     `install_modules` (array of strings) - Set of PowerShell modules to be installed
+     with the `Install-Module` command. See `install_package_management` if you would
+     like the DSC Provisioner to install this command for you.
+
+     `install_package_management` (bool) - Automatically installs the
+     [Package Management](https://github.com/OneGet/oneget) package manager
+     (formerly OneGet) on the server.
+
 -   `staging_dir` (string) - The directory where files will be uploaded.
     Packer requires write  permissions in this directory.
 
@@ -75,7 +83,7 @@ Optional parameters:
     Packer requires the directory to exist when running DSC.
 
 -   `ignore_exit_codes` (boolean) - If true, Packer will never consider the
-provisioner a failure.
+    DSC provisioning a failure.
 
 -   `execute_command` (string) -  The command used to execute DSC. This has
     various [configuration template
