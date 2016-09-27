@@ -107,11 +107,11 @@ Optional parameters:
     These paths are uploaded into `${env:programfiles}\WindowsPowershell\Modules` to be used system-wide, unlike
     `module_paths` which is scoped to the current Configuration.
 
-    `install_modules` (array of strings) - Set of PowerShell modules to be installed
+-   `install_modules` (array of strings) - Set of PowerShell modules to be installed
     with the `Install-Module` command. See `install_package_management` if you would
     like the DSC Provisioner to install this command for you.
 
-    `install_package_management` (bool) - Automatically installs the
+-   `install_package_management` (bool) - Automatically installs the
     [Package Management](https://github.com/OneGet/oneget) package manager
     (formerly OneGet) on the server.    
 
