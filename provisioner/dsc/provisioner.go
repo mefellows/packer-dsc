@@ -319,7 +319,10 @@ func (p *Provisioner) createDscScript(tpml ExecuteTemplate) (string, error) {
 		return "", err
 	}
 
-	file, _ := ioutil.TempFile("/tmp", "packer-dsc-runner")
+	file, err := ioutil.TempFile("/tmp", "packer-dsc-runner")
+	if err != nil {
+		return "", err
+	}
 	err = ioutil.WriteFile(file.Name(), []byte(command), 0655)
 
 	return file.Name(), err
@@ -440,7 +443,10 @@ func (p *Provisioner) installPackageManagement(ui packer.Ui, comm packer.Communi
 	}
 
 	// Upload script
-	file, _ := ioutil.TempFile("/tmp", "packer-dsc-packagemanagement")
+	file, err := ioutil.TempFile("/tmp", "packer-dsc-packagemanagement")
+	if err != nil {
+		return err
+	}
 	err = ioutil.WriteFile(file.Name(), []byte(script), 0655)
 
 	remoteScriptFile := fmt.Sprintf("/tmp/%s.ps1", filepath.Base(file.Name()))
