@@ -1,11 +1,13 @@
-box: tcnksm/gox:1.5.3
+box: tcnksm/gox:1.7
 build:
     steps:
         - setup-go-workspace
+        # - golint:
+        #   exclude: "vendor"        
         - script:
             name: go get
             code: |
-                go get -t ./...        
+                make updatedeps       
         - script:
             name: go test
             code: |
