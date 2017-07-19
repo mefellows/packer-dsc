@@ -25,10 +25,6 @@ fi
 XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
 XC_OS=${XC_OS:-linux darwin windows freebsd openbsd}
 
-# Install dependencies
-echo "==> Getting dependencies..."
-go get ./...
-
 # Delete the old dir
 echo "==> Removing old directory..."
 rm -f bin/*
@@ -41,9 +37,8 @@ set +e
 gox \
     -os="${XC_OS}" \
     -arch="${XC_ARCH}" \
-    -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" \
     -output "pkg/{{.OS}}_{{.Arch}}/packer-{{.Dir}}" \
-    ./...
+    ./plugin/provisioner-dsc
 set -e
 
 # Move all the compiled things to the $GOPATH/bin
