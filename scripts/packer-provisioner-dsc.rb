@@ -2,14 +2,14 @@ require 'formula'
 
 class PackerProvisionerDsc < Formula
   homepage "https://github.com/mefellows/packer-dsc/"
-  version "0.0.1-pre-release"
+  version "0.0.3-pre-release"
 
-  if Hardware.is_64_bit?
+  if Hardware::CPU.is_64_bit?
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_amd64.zip"
-    sha1 '99d3a857486770821f71b22482d3df56715cefc0'
+    sha256 '70c4df21ddb6efc97d67edb5e958062e36a1c452eeba46fb9e9cf352fadd5cd4'
   else
     url "https://github.com/mefellows/packer-dsc/releases/download/#{version}/darwin_386.zip"
-    sha1 '9cf1e701620e355ffd6fa6dd93a9314cfca5321a'
+    sha256 '791345952504a14a4dd3f841aafda7551f0d241a1ee48cbd2128deebefd461e7'
   end
 
   depends_on :arch => :intel
