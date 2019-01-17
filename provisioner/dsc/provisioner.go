@@ -319,7 +319,7 @@ func (p *Provisioner) createDscScript(tpml ExecuteTemplate) (string, error) {
 		return "", err
 	}
 
-	file, err := ioutil.TempFile("/tmp", "packer-dsc-runner")
+	file, err := ioutil.TempFile(p.config.WorkingDir, "packer-dsc-runner")
 	if err != nil {
 		return "", err
 	}
@@ -384,7 +384,7 @@ func (p *Provisioner) uploadDscRunner(ui packer.Ui, comm packer.Communicator, fi
 	}
 	defer f.Close()
 
-	remoteDscFile := fmt.Sprintf("/tmp/%s.ps1", filepath.Base(file))
+	remoteDscFile := fmt.Sprintf("%s/%s.ps1", p.config.WorkingDir, filepath.Base(file))
 	if err := comm.Upload(remoteDscFile, f, nil); err != nil {
 		return "", err
 	}
@@ -443,13 +443,13 @@ func (p *Provisioner) installPackageManagement(ui packer.Ui, comm packer.Communi
 	}
 
 	// Upload script
-	file, err := ioutil.TempFile("/tmp", "packer-dsc-packagemanagement")
+	file, err := ioutil.TempFile(p.config.WorkingDir, "packer-dsc-packagemanagement")
 	if err != nil {
 		return err
 	}
 	err = ioutil.WriteFile(file.Name(), []byte(script), 0655)
 
-	remoteScriptFile := fmt.Sprintf("/tmp/%s.ps1", filepath.Base(file.Name()))
+	remoteScriptFile := fmt.Sprintf("%s/%s.ps1", p.config.WorkingDir, filepath.Base(file.Name()))
 	if err := comm.Upload(remoteScriptFile, file, nil); err != nil {
 		return err
 	}
