@@ -94,7 +94,7 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 	}
 
 	if p.config.StagingDir == "" {
-		p.config.StagingDir = "/tmp/packer-dsc-pull"
+		p.config.StagingDir = fmt.Sprintf("%s/packer-dsc-pull", os.TempDir())
 	}
 
 	if p.config.WorkingDir == "" {
