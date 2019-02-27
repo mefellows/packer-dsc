@@ -52,9 +52,12 @@ func (p *Provisioner) Prepare(raws ...interface{}) error {
 		return err
 	}
 
+	var errs *packer.MultiError
+
 	// Set some defaults
 	if p.config.ExecuteCommand == "" {
-		p.config.ExecuteCommand = `
+		if p.config.ExecuteCommandFilePath == "" {
+			p.config.ExecuteCommand = `
 #
 # DSC Runner.
 #
@@ -91,6 +94,22 @@ $StagingPath = "{{.MofPath}}"
 
 # Start a DSC Configuration run
 Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
+		} else {
+			info, err := os.Stat(p.config.ExecuteCommandFilePath)
+			if err != nil {
+				errs = packer.MultiErrorAppend(errs,
+					fmt.Errorf("execute_command_file is invalid: %s", err))
+			} else if info.IsDir() {
+				errs = packer.MultiErrorAppend(errs,
+					fmt.Errorf("execute_command_file must point to a file"))
+			}
+			dat, errs := ioutil.ReadFile(p.config.ExecuteCommandFilePath)
+			if err != nil {
+				errs = packer.MultiErrorAppend(errs,
+					fmt.Errorf("execute_command_file is invalid: %s", err))
+			}
+			p.config.ExecuteCommand = string(dat)
+		}
 	}
 
 	if p.config.StagingDir == "" {
@@ -106,7 +125,6 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 	}
 
 	// Validation
-	var errs *packer.MultiError
 	if p.config.ConfigurationFilePath != "" {
 		info, err := os.Stat(p.config.ConfigurationFilePath)
 		if err != nil {
