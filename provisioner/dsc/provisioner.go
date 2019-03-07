@@ -502,7 +502,7 @@ func (p *Provisioner) installPackage(ui packer.Ui, comm packer.Communicator, pkg
 	ui.Message(fmt.Sprintf("Installing PowerShell package '%s'", pkg))
 
 	cmd := &packer.RemoteCmd{
-		Command: fmt.Sprintf(powershellTemplate, fmt.Sprintf("Install-Module -Name %s -RequiredVersion %s -Force", pkg, version)),
+		Command: fmt.Sprintf(powershellTemplate, fmt.Sprintf("Install-Module -Name %s -RequiredVersion %s -Force -AllowClobber", pkg, version)),
 	}
 
 	if err := cmd.StartWithUi(comm, ui); err != nil {
