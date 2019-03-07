@@ -201,7 +201,9 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 
 	// Install PackageManagement
 	if p.config.InstallPackageManagement {
-		p.installPackageManagement(ui, comm)
+		if err := p.installPackageManagement(ui, comm); err != nil {
+			return fmt.Errorf("Error installing Package Management: %s", err)
+		}
 	}
 
 	// Upload configuration_params config if set
@@ -303,9 +305,12 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 
 	// Upload runner to temporary remote path
 	remoteScriptPath, err := p.uploadDscRunner(ui, comm, runner)
+
 	if err != nil {
 		return fmt.Errorf("Error uploading DSC runner: %s", err)
 	}
+
+	defer os.Remove(remoteScriptPath)
 
 	// Return command to run the DSC Runner
 	command := fmt.Sprintf(powershellTemplate, remoteScriptPath)
@@ -337,10 +342,11 @@ func (p *Provisioner) createDscScript(tpml ExecuteTemplate) (string, error) {
 		return "", err
 	}
 
-	file, err := ioutil.TempFile(p.config.WorkingDir, "packer-dsc-runner")
+	file, err := ioutil.TempFile("", "packer-dsc-runner")
 	if err != nil {
 		return "", err
 	}
+
 	err = ioutil.WriteFile(file.Name(), []byte(command), 0655)
 
 	return file.Name(), err
@@ -419,7 +425,7 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 	}
 
 	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status.")
+		return fmt.Errorf("non-zero exit status")
 	}
 
 	return nil
@@ -435,7 +441,7 @@ func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir stri
 	}
 
 	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status.")
+		return fmt.Errorf("non-zero exit status")
 	}
 
 	return nil
@@ -461,10 +467,13 @@ func (p *Provisioner) installPackageManagement(ui packer.Ui, comm packer.Communi
 	}
 
 	// Upload script
-	file, err := ioutil.TempFile(p.config.WorkingDir, "packer-dsc-packagemanagement")
+	file, err := ioutil.TempFile("", "packer-dsc-packagemanagement")
 	if err != nil {
 		return err
 	}
+
+	defer os.Remove(file.Name())
+
 	err = ioutil.WriteFile(file.Name(), []byte(script), 0655)
 
 	remoteScriptFile := fmt.Sprintf("%s/%s.ps1", p.config.WorkingDir, filepath.Base(file.Name()))
