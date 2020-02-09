@@ -18,12 +18,12 @@ GIT_DIRTY=$(test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 # If its dev mode, only build for ourself
 if [ "${TF_DEV}x" != "x" ]; then
     XC_OS=${XC_OS:-$(go env GOOS)}
-    XC_ARCH="amd64"
+    XC_ARCH="386 amd64"
 fi
 
 # Determine the arch/os combos we're building for
-XC_ARCH=${XC_ARCH:-"amd64"}
-XC_OS=${XC_OS:-linux windows}
+XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
+XC_OS=${XC_OS:-linux darwin windows freebsd openbsd}
 
 # Delete the old dir
 echo "==> Removing old directory..."
@@ -44,7 +44,7 @@ set -e
 # Move all the compiled things to the $GOPATH/bin
 GOPATH=${GOPATH:-$(go env GOPATH)}
 case $(uname) in
-    CYGWIN*|MSYS_NT*)
+    CYGWIN*|MSYS_NT*|MINGW64*)
         GOPATH="$(cygpath $GOPATH)"
         ;;
 esac
@@ -65,7 +65,7 @@ if [ "${TF_DEV}x" != "x" ]; then
     # Update parity.rb
     echo "==> Updating ./scripts/parity.rb with latest SHASUMS"
     case $(uname) in
-        CYGWIN*|MSYS_NT*)
+        CYGWIN*|MSYS_NT*|MINGW64*)
             HASH32=$(sha256sum pkg/windows_386/packer-provisioner-dsc | cut -d" " -f 1)
             HASH64=$(sha256sum pkg/windows_amd64/packer-provisioner-dsc | cut -d" " -f 1)
             ;;
@@ -74,11 +74,8 @@ if [ "${TF_DEV}x" != "x" ]; then
             HASH64=$(shasum -a 1 pkg/darwin_amd64/packer-provisioner-dsc | cut -d" " -f 1)
             ;;
     esac
-
-    echo ${HASH32}
-    echo ${HASH64}
-    sed -i "9s/sha256 '\(.*\)'/sha1 '${HASH32}'/g" scripts/packer-provisioner-dsc.rb
-    sed -i "12s/sha256 '\(.*\)'/sha1 '${HASH64}'/g" scripts/packer-provisioner-dsc.rb
+    sed -i "9s/sha1 '\(.*\)'/sha1 '${HASH32}'/g" scripts/packer-provisioner-dsc.rb
+    sed -i "12s/sha1 '\(.*\)'/sha1 '${HASH64}'/g" scripts/packer-provisioner-dsc.rb
 fi
 
 # Done!
