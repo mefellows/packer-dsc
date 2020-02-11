@@ -6,12 +6,14 @@
 package dsc
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/hashicorp/hcl/v2/hcldec"
 	"github.com/hashicorp/packer/helper/config"
 	"github.com/hashicorp/packer/packer"
 	"github.com/hashicorp/packer/template/interpolate"
@@ -36,6 +38,9 @@ type ExecuteTemplate struct {
 }
 
 var powershellTemplate = `powershell "& { %s; exit $LastExitCode}"`
+
+// ConfigSpec returns a hcldec.ObjectSpec, which is a spec necessary for using HCL2 templates with Packer.
+func (p *Provisioner) ConfigSpec() hcldec.ObjectSpec { return p.config.FlatMapstructure().HCL2Spec() }
 
 // Prepare sets up the DSC configuration
 func (p *Provisioner) Prepare(raws ...interface{}) error {
@@ -131,7 +136,7 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 
 	if p.config.ManifestFile == "" {
 		errs = packer.MultiErrorAppend(errs,
-			fmt.Errorf("A manifest_file must be specified."))
+			fmt.Errorf("a manifest_file must be specified"))
 	} else {
 		_, err := os.Stat(p.config.ManifestFile)
 		if err != nil {
@@ -174,11 +179,11 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 }
 
 // Provision the remote machine with DSC
-func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
+func (p *Provisioner) Provision(_ context.Context, ui packer.Ui, comm packer.Communicator, _ map[string]interface{}) error {
 	ui.Say("Provisioning with DSC...")
 	ui.Message("Creating DSC staging directory...")
 	if err := p.createDir(ui, comm, p.config.StagingDir); err != nil {
-		return fmt.Errorf("Error creating staging directory: %s", err)
+		return fmt.Errorf("error creating staging directory: %s", err)
 	}
 
 	// Install PackageManagement
@@ -192,7 +197,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		var err error
 		remoteConfigurationFilePath, err = p.uploadConfigurationFile(ui, comm)
 		if err != nil {
-			return fmt.Errorf("Error uploading configuration_params config: %s", err)
+			return fmt.Errorf("error uploading configuration_params config: %s", err)
 		}
 	}
 
@@ -204,7 +209,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		remoteManifestDir = fmt.Sprintf("%s/manifest", p.config.StagingDir)
 		err := p.uploadDirectory(ui, comm, remoteManifestDir, p.config.ManifestDir)
 		if err != nil {
-			return fmt.Errorf("Error uploading manifest dir: %s", err)
+			return fmt.Errorf("error uploading manifest dir: %s", err)
 		}
 	}
 
@@ -222,7 +227,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		ui.Message(fmt.Sprintf("Uploading local modules from: %s", path))
 		targetPath := fmt.Sprintf("%s/module-%d", p.config.StagingDir, i)
 		if err := p.uploadDirectory(ui, comm, targetPath, path); err != nil {
-			return fmt.Errorf("Error uploading modules: %s", err)
+			return fmt.Errorf("error uploading modules: %s", err)
 		}
 
 		modulePaths = append(modulePaths, targetPath)
@@ -233,7 +238,7 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		ui.Message(fmt.Sprintf("Uploading global DSC Resources from: %s", path))
 		targetPath := fmt.Sprintf(`%s\%s`, `${env:programfiles}\WindowsPowershell\Modules`, filepath.Base(path))
 		if err := p.uploadDirectory(ui, comm, targetPath, path); err != nil {
-			return fmt.Errorf("Error uploading global DSC Resource: %s", err)
+			return fmt.Errorf("error uploading global DSC Resource: %s", err)
 		}
 	}
 
@@ -243,14 +248,14 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 		ui.Message(fmt.Sprintf("Uploading local MOF path from: %s", p.config.MofPath))
 		remoteMofPath = fmt.Sprintf("%s/mof", p.config.StagingDir)
 		if err := p.uploadDirectory(ui, comm, remoteMofPath, p.config.MofPath); err != nil {
-			return fmt.Errorf("Error uploading MOF: %s", err)
+			return fmt.Errorf("error uploading MOF: %s", err)
 		}
 	}
 
 	// Upload manifest
 	remoteManifestFile, err := p.uploadManifest(ui, comm)
 	if err != nil {
-		return fmt.Errorf("Error uploading manifest: %s", err)
+		return fmt.Errorf("error uploading manifest: %s", err)
 	}
 
 	// Compile the configuration variables
@@ -280,13 +285,13 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	// Create the DSC script
 	runner, err := p.createDscScript(*tmpl)
 	if err != nil {
-		return fmt.Errorf("Error creating DSC runner: %s", err)
+		return fmt.Errorf("error creating DSC runner: %s", err)
 	}
 
 	// Upload runner to temporary remote path
 	remoteScriptPath, err := p.uploadDscRunner(ui, comm, runner)
 	if err != nil {
-		return fmt.Errorf("Error uploading DSC runner: %s", err)
+		return fmt.Errorf("error uploading DSC runner: %s", err)
 	}
 
 	// Return command to run the DSC Runner
@@ -296,17 +301,17 @@ func (p *Provisioner) Provision(ui packer.Ui, comm packer.Communicator) error {
 	}
 
 	ui.Message(fmt.Sprintf("Running DSC: %s", command))
-	if err := cmd.StartWithUi(comm, ui); err != nil {
+	if err := cmd.RunWithUi(context.Background(), comm, ui); err != nil {
 		return err
 	}
 
-	if cmd.ExitStatus != 0 && cmd.ExitStatus != 2 && !p.config.IgnoreExitCodes {
-		return fmt.Errorf("DSC exited with a non-zero exit status: %d", cmd.ExitStatus)
+	if cmd.ExitStatus() != 0 && cmd.ExitStatus() != 2 && !p.config.IgnoreExitCodes {
+		return fmt.Errorf("dsc exited with a non-zero exit status: %d", cmd.ExitStatus())
 	}
 
 	if p.config.CleanStagingDir {
 		if err := p.removeDir(ui, comm, p.config.StagingDir); err != nil {
-			return fmt.Errorf("Error removing staging directory: %s", err)
+			return fmt.Errorf("error removing staging directory: %s", err)
 		}
 	}
 	return nil
@@ -356,7 +361,7 @@ func (p *Provisioner) uploadManifest(ui packer.Ui, comm packer.Communicator) (st
 	ui.Message("Uploading manifest...")
 	remoteManifestDir := fmt.Sprintf("%s/manifest", p.config.StagingDir)
 	if err := p.createDir(ui, comm, remoteManifestDir); err != nil {
-		return "", fmt.Errorf("Error creating manifest directory: %s", err)
+		return "", fmt.Errorf("error creating manifest directory: %s", err)
 	}
 
 	ui.Message(fmt.Sprintf("Uploading manifest file from: %s", p.config.ManifestFile))
@@ -396,12 +401,12 @@ func (p *Provisioner) createDir(ui packer.Ui, comm packer.Communicator, dir stri
 		Command: fmt.Sprintf("powershell.exe -Command \"New-Item -ItemType directory -Force -ErrorAction SilentlyContinue -Path %s\"", dir),
 	}
 
-	if err := cmd.StartWithUi(comm, ui); err != nil {
+	if err := cmd.RunWithUi(context.Background(), comm, ui); err != nil {
 		return err
 	}
 
-	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status.")
+	if cmd.ExitStatus() != 0 {
+		return fmt.Errorf("non-zero exit status")
 	}
 
 	return nil
@@ -412,12 +417,12 @@ func (p *Provisioner) removeDir(ui packer.Ui, comm packer.Communicator, dir stri
 		Command: fmt.Sprintf("powershell.exe -Command \"Remove-Item '%s' -Recurse -Force\"", dir),
 	}
 
-	if err := cmd.StartWithUi(comm, ui); err != nil {
+	if err := cmd.RunWithUi(context.Background(), comm, ui); err != nil {
 		return err
 	}
 
-	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Non-zero exit status.")
+	if cmd.ExitStatus() != 0 {
+		return fmt.Errorf("non-zero exit status")
 	}
 
 	return nil
@@ -459,12 +464,12 @@ func (p *Provisioner) installPackageManagement(ui packer.Ui, comm packer.Communi
 		Command: fmt.Sprintf(`powershell "& { %s; exit $LastExitCode}"`, remoteScriptFile),
 	}
 
-	if err := cmd.StartWithUi(comm, ui); err != nil {
+	if err := cmd.RunWithUi(context.Background(), comm, ui); err != nil {
 		return err
 	}
 
-	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("Install Package Management return a non-zero exit status: %d", cmd.ExitStatus)
+	if cmd.ExitStatus() != 0 {
+		return fmt.Errorf("install Package Management return a non-zero exit status: %d", cmd.ExitStatus)
 	}
 
 	return nil
@@ -478,12 +483,12 @@ func (p *Provisioner) installPackage(ui packer.Ui, comm packer.Communicator, pkg
 		Command: fmt.Sprintf(powershellTemplate, fmt.Sprintf("Install-Module -Name %s -RequiredVersion %s -Force", pkg, version)),
 	}
 
-	if err := cmd.StartWithUi(comm, ui); err != nil {
+	if err := cmd.RunWithUi(context.Background(), comm, ui); err != nil {
 		return err
 	}
 
-	if cmd.ExitStatus != 0 {
-		return fmt.Errorf("PowerShell module install exited with a non-zero exit status: %d", cmd.ExitStatus)
+	if cmd.ExitStatus() != 0 {
+		return fmt.Errorf("powerShell module install exited with a non-zero exit status: %d", cmd.ExitStatus)
 	}
 
 	return nil

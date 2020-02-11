@@ -1,3 +1,6 @@
+//go:generate mapstructure-to-hcl2 -type Config
+// see https://packer.io/guides/hcl/component-object-spec/
+
 package dsc
 
 import (
@@ -5,6 +8,7 @@ import (
 	"github.com/hashicorp/packer/template/interpolate"
 )
 
+// Config are the required properties to setup the DSC provisioner
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 	ctx                 interpolate.Context

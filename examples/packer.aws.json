@@ -15,7 +15,6 @@
       "user_data_file": "amz.userdata",
       "communicator": "winrm",
       "associate_public_ip_address": "true",
-      "ssh_private_ip": "false",
       "region": "{{user `region`}}",
       "source_ami": "{{user `source_ami`}}",
       "vpc_id": "{{user `vpc_id`}}",
@@ -38,9 +37,7 @@
       "install_modules": {
         "xWebAdministration": "1.10.0.0"
       },
-      "module_paths": [
-        "modules"
-      ],      
+
       "configuration_params": {
         "-WebAppPath": "c:\\tmp",
         "-MachineName": "localhost"

@@ -6,7 +6,7 @@ bin:
 	@sh -c "$(CURDIR)/scripts/build.sh"
 
 dev:
-	@TF_DEV=1 sh -c "$(CURDIR)/scripts/build.sh"
+	go build -o "bin/provisioner-dsc" ./plugin/provisioner-dsc
 
 test:
 	"$(CURDIR)/scripts/test.sh"
@@ -14,7 +14,8 @@ test:
 testrace:
 	go test -race $(TEST) $(TESTARGS)
 
-updatedeps:
-	go get -d -v -p 2 ./...
+deps:
+	go install github.com/hashicorp/packer/cmd/mapstructure-to-hcl2
+	go generate github.com/mefellows/packer-dsc/...
 
-.PHONY: bin default dev test updatedeps
+.PHONY: bin default dev test deps
