@@ -9,7 +9,7 @@ dev:
 	@TF_DEV=1 sh -c "$(CURDIR)/scripts/build.sh"
 
 test:
-	"$(CURDIR)/scripts/test.sh"
+	@sh -c "$(CURDIR)/scripts/test.sh"
 
 testrace:
 	go test -race $(TEST) $(TESTARGS)

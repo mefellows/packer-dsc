@@ -9,8 +9,11 @@ type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
 	ctx                 interpolate.Context
 
-	// The command used to execute Puppet.
+	// The command used to execute DSC.
 	ExecuteCommand string `mapstructure:"execute_command"`
+
+	// The file containing the command to execute DSC
+	ExecuteCommandFilePath string `mapstructure:"execute_command_file"`
 
 	// Set of Parameters to pass to the DSC Configuration.
 	ConfigurationParams map[string]string `mapstructure:"configuration_params"`

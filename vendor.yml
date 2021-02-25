@@ -12,7 +12,7 @@ vendors:
 - path: github.com/hashicorp/go-version
   rev: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
 - path: github.com/hashicorp/packer
-  rev: ba3d4c8cd28c50e05fe6cff070642ef65346b720
+  rev: 324581ac9ce8d1e0558b33eea9d4f9d6d5a16002
 - path: github.com/hashicorp/yamux
   rev: d1caa6c97c9fc1cc9e83bbe34d0603f9ff0ce8bd
 - path: github.com/mitchellh/go-fs
@@ -27,3 +27,4 @@ vendors:
   rev: 8d802ff4ae93611b807597f639c19f76074df5c6
 - path: github.com/ugorji/go
   rev: 5efa3251c7f7d05e5d9704a69a984ec9f1386a40
+- path: github.com/hashicorp/hcl/v2

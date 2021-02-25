@@ -44,7 +44,7 @@ set -e
 # Move all the compiled things to the $GOPATH/bin
 GOPATH=${GOPATH:-$(go env GOPATH)}
 case $(uname) in
-    CYGWIN*)
+    CYGWIN*|MSYS_NT*|MINGW64*)
         GOPATH="$(cygpath $GOPATH)"
         ;;
 esac
@@ -64,8 +64,16 @@ done
 if [ "${TF_DEV}x" != "x" ]; then
     # Update parity.rb
     echo "==> Updating ./scripts/parity.rb with latest SHASUMS"
-    HASH32=$(shasum -a 1 pkg/darwin_386/packer-provisioner-dsc | cut -d" " -f 1)
-    HASH64=$(shasum -a 1 pkg/darwin_amd64/packer-provisioner-dsc | cut -d" " -f 1)
+    case $(uname) in
+        CYGWIN*|MSYS_NT*|MINGW64*)
+            HASH32=$(sha256sum pkg/windows_386/packer-provisioner-dsc | cut -d" " -f 1)
+            HASH64=$(sha256sum pkg/windows_amd64/packer-provisioner-dsc | cut -d" " -f 1)
+            ;;
+        * )
+            HASH32=$(shasum -a 1 pkg/darwin_386/packer-provisioner-dsc | cut -d" " -f 1)
+            HASH64=$(shasum -a 1 pkg/darwin_amd64/packer-provisioner-dsc | cut -d" " -f 1)
+            ;;
+    esac
     sed -i "9s/sha1 '\(.*\)'/sha1 '${HASH32}'/g" scripts/packer-provisioner-dsc.rb
     sed -i "12s/sha1 '\(.*\)'/sha1 '${HASH64}'/g" scripts/packer-provisioner-dsc.rb
 fi
