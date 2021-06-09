@@ -1,16 +1,19 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/hashicorp/packer-plugin-sdk/plugin"
 	"github.com/mefellows/packer-dsc/provisioner/dsc"
-	"github.com/hashicorp/packer/packer/plugin"
 )
 
 func main() {
-
-	server, err := plugin.Server()
+	pps := plugin.NewSet()
+	pps.RegisterProvisioner(plugin.DEFAULT_NAME, new(dsc.Provisioner))
+	err := pps.Run()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
-	server.RegisterProvisioner(new(dsc.Provisioner))
-	server.Serve()
 }
