@@ -1,6 +1,7 @@
 package dsc
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"regexp"
@@ -304,8 +305,9 @@ func TestProvisionerPrepare_installPackage(t *testing.T) {
 }
 
 func TestProvisioner_installPackage(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
@@ -318,7 +320,7 @@ func TestProvisioner_installPackage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	err = p.installPackage(ui, comm, "SomeModuleName", "1.0.0")
+	err = p.installPackage(ctx, ui, comm, "SomeModuleName", "1.0.0")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -333,8 +335,9 @@ func TestProvisioner_installPackage(t *testing.T) {
 }
 
 func TestProvisioner_installPackageNonZeroExitCode(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
@@ -348,7 +351,7 @@ func TestProvisioner_installPackageNonZeroExitCode(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	err = p.installPackage(ui, comm, "SomeModuleName", "1.0.0")
+	err = p.installPackage(ctx, ui, comm, "SomeModuleName", "1.0.0")
 	if err == nil {
 		t.Fatalf("Expected error but got none")
 	}
@@ -365,6 +368,7 @@ func TestProvisionerPrepare_installPackageManagement(t *testing.T) {
 }
 
 func TestProvisioner_installPackageManagement(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
 	config["install_package_management"] = true
 	p := new(Provisioner)
@@ -372,17 +376,18 @@ func TestProvisioner_installPackageManagement(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
-	err = p.installPackageManagement(ui, comm)
+	err = p.installPackageManagement(ctx, ui, comm)
 	if err != nil {
 		t.Fatalf("Err: %s", err)
 	}
 }
 
 func TestProvisioner_installPackageManagementFail(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
 	config["install_package_management"] = true
 	p := new(Provisioner)
@@ -390,20 +395,21 @@ func TestProvisioner_installPackageManagementFail(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
 	comm.StartExitStatus = 2
-	err = p.installPackageManagement(ui, comm)
+	err = p.installPackageManagement(ctx, ui, comm)
 	if err == nil {
 		t.Fatalf("Expected error but got none")
 	}
 }
 
 func TestProvisionerProvision_mofFile(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
@@ -421,7 +427,7 @@ func TestProvisionerProvision_mofFile(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = p.Provision(ui, comm)
+	err = p.Provision(ctx, ui, comm, config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -469,8 +475,9 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 }
 
 func TestProvisionerProvision_noConfigurationParams(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
@@ -486,7 +493,7 @@ func TestProvisionerProvision_noConfigurationParams(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = p.Provision(ui, comm)
+	err = p.Provision(ctx, ui, comm, config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -541,8 +548,9 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 }
 
 func TestProvisionerProvision_configurationParams(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
@@ -561,7 +569,7 @@ func TestProvisionerProvision_configurationParams(t *testing.T) {
 		t.Fatalf("err: %s", err)
 	}
 
-	err = p.Provision(ui, comm)
+	err = p.Provision(ctx, ui, comm, config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -616,23 +624,24 @@ Start-DscConfiguration -Force -Wait -Verbose -Path $StagingPath`
 }
 
 func TestProvisioner_removeDir(t *testing.T) {
+	ctx := context.Background()
 	config := testConfig()
 	p := new(Provisioner)
 	err := p.Prepare(config)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
-	ui := &packer.MachineReadableUi{
+	ui := &packer.BasicUi{
 		Writer: ioutil.Discard,
 	}
 	comm := new(packer.MockCommunicator)
-	err = p.removeDir(ui, comm, "somedir")
+	err = p.removeDir(ctx, ui, comm, "somedir")
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
 
 	comm.StartExitStatus = 1
-	err = p.removeDir(ui, comm, "somedir")
+	err = p.removeDir(ctx, ui, comm, "somedir")
 	if err == nil {
 		t.Fatalf("Expected error but got none")
 	}
