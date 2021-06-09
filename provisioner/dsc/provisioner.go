@@ -6,22 +6,22 @@
 package dsc
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/packer/helper/config"
-	"github.com/hashicorp/packer/packer"
-	"github.com/hashicorp/packer/template/interpolate"
 	"github.com/hashicorp/hcl/v2/hcldec"
+	"github.com/hashicorp/packer-plugin-sdk/packer"
+	"github.com/hashicorp/packer-plugin-sdk/template/config"
+	"github.com/hashicorp/packer-plugin-sdk/template/interpolate"
 )
 
 // Provisioner DSC
 type Provisioner struct {
-	config 		  Config
+	config        Config
 	communicator  packer.Communicator
 	generatedData map[string]interface{}
 }
@@ -534,6 +534,6 @@ func (p *Provisioner) uploadDirectory(ctx context.Context, ui packer.Ui, comm pa
 	return comm.UploadDir(dst, src, nil)
 }
 
-func (p *Provisioner) ConfigSpec() hcldec.ObjectSpec { 
-	return p.config.FlatMapstructure().HCL2Spec() 
+func (p *Provisioner) ConfigSpec() hcldec.ObjectSpec {
+	return p.config.FlatMapstructure().HCL2Spec()
 }
